@@ -265,8 +265,8 @@ docs(readme): atualizar instruções de instalação
 
 Para dúvidas técnicas ou sugestões:
 
-- 📧 **Email**: pedroabreu6497l@exemplo.com
-- 💼 **LinkedIn**: [Seu Perfil](https://www.linkedin.com/in/pedro-marschhausen-2756891b3/)
+- 📧 **Email**: pedroabreu6497@exemplo.com
+- 💼 **LinkedIn**: [Pedro Marschhausen](https://www.linkedin.com/in/pedro-marschhausen-2756891b3/)
 - 🐛 **Issues**: [GitHub Issues](https://github.com/PedroAbreu017/projeto-mrp/issues)
 
 ## 📄 Licença
