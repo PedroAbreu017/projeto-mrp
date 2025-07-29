@@ -265,9 +265,9 @@ docs(readme): atualizar instruções de instalação
 
 Para dúvidas técnicas ou sugestões:
 
-- 📧 **Email**: seu-email@exemplo.com
-- 💼 **LinkedIn**: [Seu Perfil](https://linkedin.com/in/seu-perfil)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/seu-usuario/projeto-mrp/issues)
+- 📧 **Email**: pedroabreu6497l@exemplo.com
+- 💼 **LinkedIn**: [Seu Perfil](https://www.linkedin.com/in/pedro-marschhausen-2756891b3/)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/PedroAbreu017/projeto-mrp/issues)
 
 ## 📄 Licença
 
