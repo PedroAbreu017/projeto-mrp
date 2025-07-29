@@ -164,15 +164,15 @@ php -S localhost:8000
 ## 📱 Screenshots
 
 ### Dashboard Principal
-![Dashboard](docs/screenshots/dashboard.png)
+![Dashboard](docs/screenshots/Dashboard.png)
 *Interface moderna com cards estatísticos e navegação intuitiva*
 
 ### Gestão de Estoque
-![Estoque](docs/screenshots/estoque.png)
+![Estoque](docs/screenshots/Estoque.png)
 *Controle completo com alertas visuais e ações rápidas*
 
 ### Planejamento MRP
-![MRP](docs/screenshots/mrp.png)
+![MRP](docs/screenshots/Mrp.png)
 *Cálculo automático com resultados detalhados*
 
 📸 [**Ver todas as capturas →**](docs/SCREENSHOTS.md)
