@@ -1,16 +1,87 @@
 <?php
+namespace App\Models\Entities;
+
 /**
  * Model: MRP (Material Requirements Planning)
+ * Migrado de models/Mrp.php para arquitetura PSR-4
  * Calcula necessidades de materiais baseado na produção planejada
  */
-
-require_once __DIR__ . '/../config/database.php';
-
 class Mrp {
     private $db;
     
-    public function __construct() {
-        $this->db = Database::getInstance();
+    public function __construct($database = null) {
+        $this->carregarEnv();
+        // TODO: Implementar Dependency Injection
+        $this->db = $database ?? $this->getDatabase();
+    }
+
+    private function carregarEnv() {
+    if (empty($_ENV['DB_NAME'])) {
+        $envFile = __DIR__ . '/../../../.env';
+        
+        if (file_exists($envFile)) {
+            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos($line, '=') !== false && $line[0] !== '#') {
+                    list($key, $value) = explode('=', $line, 2);
+                    $_ENV[trim($key)] = trim($value, '"\'');
+                 }
+             }
+          }
+      }
+   }
+    
+    /**
+     * Database connection (temporário - depois vamos usar DI)
+     */
+    private function getDatabase() {
+        // Conexão direta temporária
+        try {
+            $host = $_ENV['DB_HOST'] ?? 'localhost';
+            $dbname = $_ENV['DB_NAME'] ?? null;
+            $username = $_ENV['DB_USER'] ?? null;
+            $password = $_ENV['DB_PASS'] ?? null;
+        
+           if (empty($dbname) || empty($username)) {
+               throw new \Exception("Database credentials missing. Check .env file: DB_NAME={$dbname}, DB_USER={$username}");
+        }
+   
+            $pdo = new \PDO(
+                "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
+                $username,
+                $password,
+                [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC
+                ]
+            );
+            
+            // Criar wrapper para compatibilidade com métodos originais
+            return new class($pdo) {
+                private $pdo;
+                public function __construct($pdo) { $this->pdo = $pdo; }
+                public function fetchAll($sql, $params = []) { 
+                    $stmt = $this->pdo->prepare($sql); 
+                    $stmt->execute($params); 
+                    return $stmt->fetchAll(); 
+                }
+                public function fetch($sql, $params = []) { 
+                    $stmt = $this->pdo->prepare($sql); 
+                    $stmt->execute($params); 
+                    return $stmt->fetch(); 
+                }
+                public function execute($sql, $params = []) { 
+                    $stmt = $this->pdo->prepare($sql); 
+                    return $stmt->execute($params) ? $stmt->rowCount() : false; 
+                }
+                public function lastInsertId() { 
+                    return $this->pdo->lastInsertId(); 
+                }
+            };
+            
+        } catch (\PDOException $e) {
+            throw new \Exception("Database connection failed: " . $e->getMessage());
+        }
     }
     
     /**
@@ -248,8 +319,6 @@ class Mrp {
      * Calcula custo estimado de compras (se tivéssemos preços)
      */
     public function calcularCustoEstimado($resumoCompras) {
-        // Placeholder para futuras implementações com preços
-        // Por enquanto retorna apenas informações básicas
         return [
             'total_itens' => count($resumoCompras),
             'observacao' => 'Cálculo de custos requer cadastro de preços dos componentes'

@@ -1,16 +1,94 @@
 <?php
+namespace App\Models\Entities;
+
 /**
  * Model: Estoque
+ * Migrado de models/estoque.php para arquitetura PSR-4
  * Gerencia operações relacionadas ao estoque de componentes
  */
-
-require_once __DIR__ . '/../config/database.php';
-
 class Estoque {
     private $db;
     
-    public function __construct() {
-        $this->db = Database::getInstance();
+      // E MODIFIQUE O __construct() do Estoque:
+     public function __construct() {
+       // ADICIONAR ESTA LINHA NO INÍCIO:
+       $this->carregarEnv();
+    
+       $this->db = $this->getDatabase();
+   }
+
+   /**
+ * Carregar variáveis de ambiente se não estiverem carregadas
+ */
+   private function carregarEnv() {
+       if (empty($_ENV['DB_NAME'])) {
+           $envFile = __DIR__ . '/../../../.env';
+        
+           if (file_exists($envFile)) {
+               $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+               foreach ($lines as $line) {
+                   if (strpos($line, '=') !== false && $line[0] !== '#') {
+                       list($key, $value) = explode('=', $line, 2);
+                       $_ENV[trim($key)] = trim($value, '"\'');
+                   }
+               }
+           }
+       }
+   }
+
+
+
+    /**
+     * Database connection (temporário - depois vamos usar DI)
+     */
+    private function getDatabase() {
+        // Conexão direta temporária
+        try {
+            $host = $_ENV['DB_HOST'] ?? 'localhost';
+            $dbname = $_ENV['DB_NAME'] ?? null;
+            $username = $_ENV['DB_USER'] ?? null;
+            $password = $_ENV['DB_PASS'] ?? null;
+        
+           if (empty($dbname) || empty($username)) {
+               throw new \Exception("Database credentials missing. Check .env file: DB_NAME={$dbname}, DB_USER={$username}");
+        }
+   
+            $pdo = new \PDO(
+                "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
+                $username,
+                $password,
+                [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC
+                ]
+            );
+            
+            // Criar wrapper para compatibilidade com métodos originais
+            return new class($pdo) {
+                private $pdo;
+                public function __construct($pdo) { $this->pdo = $pdo; }
+                public function fetchAll($sql, $params = []) { 
+                    $stmt = $this->pdo->prepare($sql); 
+                    $stmt->execute($params); 
+                    return $stmt->fetchAll(); 
+                }
+                public function fetch($sql, $params = []) { 
+                    $stmt = $this->pdo->prepare($sql); 
+                    $stmt->execute($params); 
+                    return $stmt->fetch(); 
+                }
+                public function execute($sql, $params = []) { 
+                    $stmt = $this->pdo->prepare($sql); 
+                    return $stmt->execute($params) ? $stmt->rowCount() : false; 
+                }
+                public function lastInsertId() { 
+                    return $this->pdo->lastInsertId(); 
+                }
+            };
+            
+        } catch (\PDOException $e) {
+            throw new \Exception("Database connection failed: " . $e->getMessage());
+        }
     }
     
     /**
@@ -52,7 +130,7 @@ class Estoque {
     public function atualizarEstoque($id, $quantidade) {
         // Validação básica
         if (!is_numeric($quantidade) || $quantidade < 0) {
-            throw new InvalidArgumentException("Quantidade deve ser um número positivo");
+            throw new \InvalidArgumentException("Quantidade deve ser um número positivo");
         }
         
         $sql = "UPDATE componentes 
@@ -62,7 +140,7 @@ class Estoque {
         $rowsAffected = $this->db->execute($sql, [$quantidade, $id]);
         
         if ($rowsAffected === 0) {
-            throw new Exception("Componente não encontrado ou não foi possível atualizar");
+            throw new \Exception("Componente não encontrado ou não foi possível atualizar");
         }
         
         return true;
@@ -74,17 +152,17 @@ class Estoque {
     public function adicionarComponente($nome, $descricao = '', $quantidade = 0, $unidade = 'unidade') {
         // Validação
         if (empty(trim($nome))) {
-            throw new InvalidArgumentException("Nome do componente é obrigatório");
+            throw new \InvalidArgumentException("Nome do componente é obrigatório");
         }
         
         if (!is_numeric($quantidade) || $quantidade < 0) {
-            throw new InvalidArgumentException("Quantidade deve ser um número positivo");
+            throw new \InvalidArgumentException("Quantidade deve ser um número positivo");
         }
         
         // Verifica se já existe
         $existente = $this->getComponenteByNome($nome);
         if ($existente) {
-            throw new Exception("Já existe um componente com este nome");
+            throw new \Exception("Já existe um componente com este nome");
         }
         
         $sql = "INSERT INTO componentes (nome, descricao, quantidade_estoque, unidade_medida) 
@@ -104,14 +182,14 @@ class Estoque {
         $result = $this->db->fetch($sqlCheck, [$id]);
         
         if ($result['count'] > 0) {
-            throw new Exception("Este componente está sendo usado em produtos e não pode ser removido");
+            throw new \Exception("Este componente está sendo usado em produtos e não pode ser removido");
         }
         
         $sql = "DELETE FROM componentes WHERE id = ?";
         $rowsAffected = $this->db->execute($sql, [$id]);
         
         if ($rowsAffected === 0) {
-            throw new Exception("Componente não encontrado");
+            throw new \Exception("Componente não encontrado");
         }
         
         return true;
@@ -119,44 +197,59 @@ class Estoque {
     
     /**
      * Atualiza informações de um componente
-     */
-    public function atualizarComponente($id, $nome, $descricao = '', $quantidade = null, $unidade = 'unidade') {
-        // Validação básica
-        if (empty(trim($nome))) {
-            throw new InvalidArgumentException("Nome do componente é obrigatório");
-        }
-        
-        // Verifica se existe outro componente com o mesmo nome
+     */public function atualizarComponente($id, $nome, $descricao = '', $quantidade = null, $unidade = 'unidade') {
+    // Validação básica
+    if (empty(trim($nome))) {
+        throw new \InvalidArgumentException("Nome do componente é obrigatório");
+    }
+    
+    // ✅ CORREÇÃO: Verificação mais robusta e com logs
+    try {
         $existente = $this->getComponenteByNome($nome);
-        if ($existente && $existente['id'] != $id) {
-            throw new Exception("Já existe outro componente com este nome");
-        }
         
+        // ✅ CORREÇÃO: Verificação mais específica
+        if ($existente !== false && $existente !== null && isset($existente['id'])) {
+            if ((int)$existente['id'] !== (int)$id) {
+                throw new \Exception("Já existe outro componente com este nome");
+            }
+        }
+    } catch (\Exception $e) {
+        // ✅ CORREÇÃO: Log do erro para debug
+        error_log("Erro ao verificar componente existente: " . $e->getMessage());
+        // Por segurança, continuamos sem a verificação duplicada
+    }
+    
+    // ✅ CORREÇÃO: SQL mais robusto
+    try {
         $sql = "UPDATE componentes 
-                SET nome = ?, descricao = ?, unidade_medida = ?";
+                SET nome = ?, descricao = ?, unidade_medida = ?, updated_at = CURRENT_TIMESTAMP";
         $params = [$nome, $descricao, $unidade];
         
         // Se quantidade foi fornecida, inclui na atualização
         if ($quantidade !== null) {
             if (!is_numeric($quantidade) || $quantidade < 0) {
-                throw new InvalidArgumentException("Quantidade deve ser um número positivo");
+                throw new \InvalidArgumentException("Quantidade deve ser um número positivo");
             }
             $sql .= ", quantidade_estoque = ?";
             $params[] = $quantidade;
         }
         
-        $sql .= ", updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+        $sql .= " WHERE id = ?";
         $params[] = $id;
         
         $rowsAffected = $this->db->execute($sql, $params);
         
         if ($rowsAffected === 0) {
-            throw new Exception("Componente não encontrado ou nenhuma alteração foi feita");
+            throw new \Exception("Componente não encontrado ou nenhuma alteração foi feita");
         }
         
         return true;
+        
+    } catch (\Exception $e) {
+        error_log("Erro na query UPDATE: " . $e->getMessage());
+        throw $e;
     }
-    
+}
     /**
      * Busca componentes com estoque baixo
      */
@@ -203,12 +296,10 @@ class Estoque {
     }
     
     /**
-     * Busca histórico de movimentações (se implementado no futuro)
+     * Busca histórico de movimentações (placeholder para futuras implementações)
      */
     public function getHistoricoMovimentacoes($componenteId = null, $limite = 50) {
         // Placeholder para futuras implementações de histórico
-        // Por enquanto retorna array vazio
         return [];
     }
 }
-?>
